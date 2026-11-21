@@ -1,0 +1,63 @@
+# chantier factory configuration ($CHANTIER_HOME/config.yaml, default ~/.chantier)
+#
+# Executors are agent CLIs. `tier` decides the accounting: local runs cost
+# energy, frontier runs cost money. `seats` caps concurrent runs (one 16 GB
+# GPU holds one model: keep local seats at 1).
+executors:
+  frank:
+    adapter: aider_ollama
+    tier: local
+    model: ollama_chat/qwen3-coder:30b
+    seats: 1
+    args: ["--edit-format", "whole"]
+    idle_timeout_s: 600     # no output for 10 min -> killed
+    timeout_s: 3600
+  claude:
+    adapter: claude_code
+    tier: frontier
+    model: sonnet
+    seats: 1
+    # Headless runs cannot answer permission prompts. Allow what the agent needs
+    # (edits, your test runner); check `claude --help` for your version's flags.
+    args: ["--permission-mode", "acceptEdits", "--allowedTools", "Bash(uv run pytest:*)"]
+  # codex:
+  #   adapter: codex
+  #   tier: frontier
+  #   model: gpt-5-codex
+  #   args: ["--full-auto"]
+  # my-harness:
+  #   adapter: command          # any command; prompt in $CHANTIER_PROMPT_FILE
+  #   tier: local
+  #   args: ["./run-my-agent.sh"]
+
+# Deterministic routing: a ladder per <ticket kind>/<phase>. A ticket starts on
+# the first rung and climbs after `attempts_per_rung` failures on a rung.
+routing:
+  attempts_per_rung: 2
+  ladders:
+    plan/plan: [claude]                 # blueprint -> specs: frontier
+    implement/implement: [frank, claude]  # code: local first, frontier on escalation
+    implement/review: [claude]          # only used when a project sets `review: true`
+
+# USD per million tokens, used when a CLI does not report its own cost, and to
+# value local tokens for the savings report. Example values: set the current
+# prices of the models you actually use.
+pricing:
+  reference_model: sonnet
+  models:
+    sonnet: {input: 3.0, output: 15.0, cache_read: 0.30}
+
+# Local runs are not free: GPU power x run time x electricity price.
+energy:
+  gpu_watts: 180
+  kwh_price: 0.08
+
+# Telegram: only attention items (a gate waiting, an escalation exhausted, a
+# budget reached). Secrets come from the environment, never from this file.
+notifications:
+  telegram:
+    token_env: CHANTIER_TELEGRAM_TOKEN
+    chat_id_env: CHANTIER_TELEGRAM_CHAT_ID
+
+web:
+  url: http://localhost:8765

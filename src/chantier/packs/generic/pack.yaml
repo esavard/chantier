@@ -1,0 +1,27 @@
+# Generic pack: any stack, greenfield or brownfield.
+#
+# A pack holds the defaults a family of deliverables shares. Project files
+# override any of them. Private packs (e.g. a mobile app factory) live in
+# $CHANTIER_HOME/packs/<name>/pack.yaml and can ship their own prompts/ folder
+# with implement.md, plan.md or review.md to replace the built-in ones.
+
+description: Any repository that follows the agent-skills spec workflow.
+
+defaults:
+  specs_dir: docs/specs
+  blueprint_path: docs/blueprint.md
+  scope_mode: warn
+  scope_allow: [docs/, test/, tests/]
+  notes_file: NOTES.md
+  gates:
+    spec_approval: human
+    merge: human
+
+# Documentation for humans and agents: how work enters the factory.
+entry_points:
+  greenfield: >
+    Run the blueprint-interview skill (Claude Code, interactive), commit
+    docs/blueprint.md, then `chantier plan <project>`.
+  brownfield: >
+    Run spec-conventions-interview once if CONVENTIONS.md is missing, then
+    spec-interview per feature; commit the spec, then `chantier sync <project>`.
