@@ -1,5 +1,7 @@
 # chantier — usine à code opiniâtre
 
+> **chantier** (French, pronounced *shahn-tyay*): a construction site, a building site. The place where a foreman dispatches the work to the trades, inspectors sign off at set milestones, and the plans decide what gets built. Here, the plans are specs, the trades are local and frontier coding agents, and the inspections are the factory's gates. The tagline, *usine à code opiniâtre*, means *opinionated code factory*.
+
 *An opinionated, spec-driven code factory.* Humans decide **what** to build and approve it at two gates; agents build it. Local LLMs do the bulk of the work, frontier agents do the heavy lifting and take over when a local model goes off the rails, and every dollar spent (or saved) is accounted for.
 
 ```mermaid
