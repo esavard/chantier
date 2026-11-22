@@ -2,16 +2,37 @@
 
 *An opinionated, spec-driven code factory.* Humans decide **what** to build and approve it at two gates; agents build it. Local LLMs do the bulk of the work, frontier agents do the heavy lifting and take over when a local model goes off the rails, and every dollar spent (or saved) is accounted for.
 
-```
- spec (human + interview skill)          board, gates, audit           deliverable repo
- ─────────────────────────────    ┌──────────────────────────────┐    ───────────────────
- greenfield: blueprint-interview ─┤  chantier                     │
-      └─ chantier plan ─► specs   │   sync ─► DRAFT ─gate─► READY │─► branch chantier/spec_NNN
- brownfield: spec-interview ──────┤   DAG + seats ─► RUNNING      │
-                                  │   watchdog ─► retry/escalate  │─► merge (gate, or auto)
-                                  │   verify ─► AWAITING_MERGE    │
-                                  └───────┬──────────────┬────────┘
-                         local (Ollama) ◄─┘              └─► frontier (Claude Code, Codex)
+```mermaid
+flowchart LR
+    subgraph intake["Specs (human + interview skill)"]
+        BI["greenfield:<br/>blueprint-interview"] -->|chantier plan| PL["planner<br/>blueprint → specs"]
+        SI["brownfield:<br/>spec-interview"]
+    end
+
+    subgraph factory["chantier (board, gates, audit)"]
+        SY[sync] --> DR[DRAFT]
+        DR -->|spec gate| RE[READY]
+        RE -->|DAG + seats| RU[RUNNING]
+        RU -->|watchdog: retry / escalate| RE
+        RU -->|verify| AM[AWAITING_MERGE]
+    end
+
+    subgraph exec["Executors"]
+        LO["local<br/>(Ollama)"]
+        FR["frontier<br/>(Claude Code, Codex)"]
+    end
+
+    subgraph repo["Deliverable repo"]
+        BR["branch chantier/spec_NNN"]
+        BASE["base branch"]
+    end
+
+    PL --> SY
+    SI --> SY
+    RU <--> LO
+    RU <--> FR
+    AM --> BR
+    BR -->|merge gate or auto| BASE
 ```
 
 ## What it does

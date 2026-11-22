@@ -2,19 +2,17 @@
 
 Hexagonal. The domain and the application services know nothing about git, SQLite, subprocesses, YAML, Rich or FastAPI; adapters implement ports. `uv run lint-imports` enforces it.
 
+```mermaid
+flowchart TD
+    CLI["chantier.cli<br/><i>terminal client</i>"] --> API["chantier.api<br/><i>web / HTTP client</i>"]
+    API --> BOOT["chantier.bootstrap<br/><i>composition root: the only module that knows every adapter</i>"]
+    BOOT --> AD["chantier.adapters<br/><i>sqlite store, git workspace, executors, config, notifiers, sinks</i>"]
+    AD --> APP["chantier.application<br/><i>board (gates, transitions), scheduler, supervisor, verification, metrics, ports</i>"]
+    APP --> SP["chantier.specs<br/><i>spec parsing, integrity hash</i>"]
+    SP --> DOM["chantier.domain<br/><i>tickets, workflow, routing, economics (no I/O)</i>"]
 ```
-chantier.cli        chantier.api           clients (terminal, web/HTTP)
-        │                │
-   chantier.bootstrap                      composition root: the only module that knows every adapter
-        │
-chantier.adapters                          sqlite store, git workspace, executors, config, notifiers, sinks
-        │
-chantier.application                       board (gates, transitions), scheduler, supervisor, verification, metrics, ports
-        │
-chantier.specs                             spec parsing, integrity hash
-        │
-chantier.domain                            tickets, workflow, routing, economics   (no I/O)
-```
+
+Each arrow reads "may import from". A layer imports only from the layers below it.
 
 ## Where things live
 
