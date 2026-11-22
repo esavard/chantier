@@ -52,29 +52,58 @@ flowchart LR
 
 ## Quick start
 
+You work in two places:
+
+- **the deliverable repo**: where you run the interview skills (with Claude Code or Codex) and commit specs. chantier never writes there, except branches and merges.
+- **any terminal**: `chantier` commands run from any directory. The factory's config and state live in `~/.chantier`, not in the current folder.
+
+Placeholders: `<project>` is the name you give the repo in chantier, `<path/to/repo>` its local path (or git URL), `<spec_NNN_name>` a spec file name without `.md`.
+
+### Install, once
+
 ```bash
-uv tool install --from git+https://github.com/esavard/chantier 'chantier[web]'   # or: uv sync --extra web
-chantier init                        # writes ~/.chantier/config.yaml: edit executors, routing, pricing
-chantier add calc --repo ~/code/calc --check "uv run pytest -q"
+uv tool install --from git+https://github.com/esavard/chantier 'chantier[web]'
+chantier init          # writes ~/.chantier/config.yaml: edit executors, routing, pricing
 ```
 
-Brownfield (existing repo):
+### Brownfield: an existing repo
 
 ```bash
-# in the deliverable repo, with Claude Code or Codex: spec-interview, then commit the spec
-chantier sync calc                   # imports docs/specs/spec_*.md as DRAFT tickets
-chantier approve calc/spec_004_history
-chantier run                         # or: chantier serve --run   (web board on :8765)
+# 1. In the deliverable repo: write a spec by interview, then commit it on the base branch
+cd <path/to/repo>
+claude                 # run the spec-interview skill (once: spec-conventions-interview if CONVENTIONS.md is missing)
+git add docs/specs && git commit -m "docs: <spec_NNN_name>"
+
+# 2. From any terminal: register the repo once, then approve the spec
+chantier add <project> --repo <path/to/repo> --check "<your test command>"   # also imports existing specs
+chantier sync <project>                       # later specs: imports new docs/specs/spec_*.md as DRAFT
+                                              # (a running factory also syncs on its own every cycle)
+chantier approve <project>/<spec_NNN_name>    # gate 1: the spec is final
+
+# 3. From any terminal: run the factory
+chantier serve --run   # web board on http://localhost:8765 (or: chantier run, terminal only)
+
+# 4. When the ticket reaches "To merge": review branch chantier/<spec_NNN_name> in the deliverable repo, then
+chantier approve <project>/<spec_NNN_name>    # gate 2: merge (or merge it yourself; chantier notices)
 ```
 
-Greenfield (new repo):
+### Greenfield: a new repo
 
 ```bash
-# in the new repo: run the blueprint-interview skill, commit docs/blueprint.md
-chantier plan calc                   # creates ticket calc/plan_001 (DRAFT: the blueprint is its spec)
-chantier approve calc/plan_001       # gate 1: the blueprint is final; the planner runs on the frontier
-# the planner pushes branch chantier/plan_001 with the proposed specs; review them, then
-chantier approve calc/plan_001       # gate 2: merge the specs; `chantier run` syncs and builds them
+# 1. Create the deliverable repo and write the blueprint by interview
+mkdir <path/to/repo> && cd <path/to/repo> && git init -b main
+claude                 # run the blueprint-interview skill: writes docs/blueprint.md
+git add docs/blueprint.md && git commit -m "docs: blueprint"
+
+# 2. From any terminal: register the repo and ask for a plan
+chantier add <project> --repo <path/to/repo> --check "<your test command>"
+chantier plan <project>                  # creates ticket <project>/plan_001; the blueprint is its spec
+chantier approve <project>/plan_001      # gate 1: the blueprint is final
+chantier serve --run                     # a frontier planner writes the specs on branch chantier/plan_001
+
+# 3. Review the proposed specs on branch chantier/plan_001, then
+chantier approve <project>/plan_001      # gate 2: merge the specs
+# the running factory imports them and builds them in dependency order, exactly like brownfield
 ```
 
 Everyday commands:
@@ -104,7 +133,7 @@ workspaces/ logs/ events.jsonl
 A project file:
 
 ```yaml
-repo: ~/code/calc            # or a git URL
+repo: <path/to/repo>         # or a git URL
 base_branch: main
 pack: generic
 gates: {spec_approval: human, merge: human}
