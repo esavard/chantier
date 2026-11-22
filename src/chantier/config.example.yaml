@@ -2,12 +2,13 @@
 #
 # Executors are agent CLIs. `tier` decides the accounting: local runs cost
 # energy, frontier runs cost money. `seats` caps concurrent runs (one 16 GB
-# GPU holds one model: keep local seats at 1).
+# GPU holds one model: keep local seats at 1). Executor names are free labels
+# used by the routing ladders below.
 executors:
-  frank:
+  ollama:
     adapter: aider_ollama
     tier: local
-    model: ollama_chat/qwen3-coder:30b
+    model: ollama_chat/qwen3-coder:30b   # Ollama host: $OLLAMA_API_BASE (default http://localhost:11434)
     seats: 1
     args: ["--edit-format", "whole"]
     idle_timeout_s: 600     # no output for 10 min -> killed
@@ -36,7 +37,7 @@ routing:
   attempts_per_rung: 2
   ladders:
     plan/plan: [claude]                 # blueprint -> specs: frontier
-    implement/implement: [frank, claude]  # code: local first, frontier on escalation
+    implement/implement: [ollama, claude] # code: local first, frontier on escalation
     implement/review: [claude]          # only used when a project sets `review: true`
 
 # USD per million tokens, used when a CLI does not report its own cost, and to

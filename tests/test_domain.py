@@ -84,11 +84,11 @@ def test_dependencies_and_cycles():
 
 
 def test_routing_climbs_the_ladder_after_attempts_on_a_rung():
-    policy = RoutingPolicy({(TicketKind.IMPLEMENT, Phase.IMPLEMENT): ("frank", "claude")}, attempts_per_rung=2)
+    policy = RoutingPolicy({(TicketKind.IMPLEMENT, Phase.IMPLEMENT): ("ollama", "claude")}, attempts_per_rung=2)
     t = ticket()
-    assert policy.executor_for(t, Phase.IMPLEMENT) == "frank"
+    assert policy.executor_for(t, Phase.IMPLEMENT) == "ollama"
     assert policy.record_failure(t) is False
-    assert policy.executor_for(t, Phase.IMPLEMENT) == "frank"
+    assert policy.executor_for(t, Phase.IMPLEMENT) == "ollama"
     assert policy.record_failure(t) is True and t.fresh_start
     assert policy.executor_for(t, Phase.IMPLEMENT) == "claude"
     policy.record_failure(t)

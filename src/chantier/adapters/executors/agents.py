@@ -10,6 +10,7 @@ change is a config edit, not a code change.
 from __future__ import annotations
 
 import json
+import os
 import re
 import urllib.request
 from urllib.error import URLError
@@ -91,9 +92,13 @@ class AiderOllamaExecutor(ProcessExecutor):
     """aider driving a local Ollama model (SovereignSpecAI's execution layer).
 
     The spec file is passed as an editable file so the agent can tick its boxes.
+    The Ollama host comes from OLLAMA_API_BASE (aider's own variable), so the GPU
+    can be another machine on the network.
     """
 
-    ollama_url = "http://localhost:11434"
+    @property
+    def ollama_url(self) -> str:
+        return os.environ.get("OLLAMA_API_BASE", "http://localhost:11434").rstrip("/")
 
     def command(self, request: ExecutionRequest) -> list[str]:
         cmd = [

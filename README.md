@@ -41,7 +41,7 @@ flowchart LR
 
 - **Spec-driven, both ways in.** Greenfield starts with the `blueprint-interview` skill and a frontier planner that turns the blueprint into specs with dependencies. Brownfield starts with `spec-interview` ([esavard/agent-skills](https://github.com/esavard/agent-skills)). Both produce the same spec format, and from there the pipeline is identical.
 - **The deliverable is a separate repo.** No side-car. chantier works in its own clone and worktrees; the deliverable only ever receives branches.
-- **Deterministic routing with escalation.** A ladder per ticket kind: `implement: [frank, claude]` means local first, frontier after two failed attempts. Escalation measures difficulty instead of guessing it.
+- **Deterministic routing with escalation.** A ladder per ticket kind: `implement: [ollama, claude]` means local first, frontier after two failed attempts. Escalation measures difficulty instead of guessing it.
 - **A supervisor that catches a local model going in circles.** Loop detection, idle and hard timeouts, then retry or escalate. Frontier work starts from a clean branch, not from the local model's mess.
 - **Verification, not claims.** After every attempt: the spec text is unchanged except its checkboxes, every checkbox is resolved (`[x]`, `(manual)` or `NOT DONE: <reason>`), changed files stay inside the spec's declared paths, and the project's own checks pass.
 - **Auto-advance with gates where they matter.** Spec approval and merge are `human` or `auto` per project. Everything in between moves on its own. Parallel where the dependency graph allows, within each executor's seats.

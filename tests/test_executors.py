@@ -58,3 +58,12 @@ def test_missing_executable_is_reported_not_raised(tmp_path: Path):
     result = run_process(["definitely-not-a-binary-xyz"], tmp_path, tmp_path / "log.txt", env={},
                          timeout_s=5, idle_timeout_s=5, interpret=lambda line, u: line, observe=lambda line: None)
     assert result.exit_code == 127
+
+
+def test_ollama_host_comes_from_the_environment(monkeypatch):
+    ex = AiderOllamaExecutor(spec("aider_ollama"))
+    monkeypatch.delenv("OLLAMA_API_BASE", raising=False)
+    assert ex.ollama_url == "http://localhost:11434"
+    monkeypatch.setenv("OLLAMA_API_BASE", "http://gpu-box:11434/")
+    assert ex.ollama_url == "http://gpu-box:11434"
+    assert ex.environment()["OLLAMA_API_BASE"] == "http://gpu-box:11434"
