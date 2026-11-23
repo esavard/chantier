@@ -57,7 +57,12 @@ You work in two places:
 - **the deliverable repo**: where you run the interview skills (with Claude Code or Codex) and commit specs. chantier never writes there, except branches and merges.
 - **any terminal**: `chantier` commands run from any directory. The factory's config and state live in `~/.chantier`, not in the current folder.
 
-Placeholders: `<project>` is the name you give the repo in chantier, `<path/to/repo>` its local path (or git URL), `<spec_NNN_name>` a spec file name without `.md`.
+Placeholders:
+
+- `<project>`: the name you give the repo in chantier (e.g. `billing-api`). Tickets are named `<project>/<spec_NNN_name>`.
+- `<path/to/repo>`: the deliverable repo's local path, or its git URL.
+- `<spec_NNN_name>`: a spec file name without `.md` (e.g. `spec_004_history`).
+- `<your test command>`: the command that proves the deliverable still works, the one you would run before opening a PR. chantier runs it in the ticket's worktree after every attempt; a non-zero exit code fails the attempt and its output becomes feedback for the next one. Examples: `uv run pytest -q`, `npm test`, `./gradlew test`, `go test ./...`, `flutter test`. Repeat `--check` for several commands (tests, linter, architecture rules); all must pass. You can change them later in `~/.chantier/projects/<project>.yaml` under `checks:`. Without any check, chantier only verifies the spec (checkboxes, integrity, scope), so set at least your test suite.
 
 ### Install, once
 
@@ -175,4 +180,6 @@ uv run pytest -q          # unit + end-to-end scenarios on real git repos with s
 uv run lint-imports       # architecture contracts (layers, pure domain)
 ```
 
-MIT licensed.
+## License
+
+[MIT licensed](LICENSE).
