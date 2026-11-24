@@ -208,7 +208,7 @@ class SqliteStore:
         with self._conn() as conn:
             rows = conn.execute("SELECT * FROM transitions WHERE ticket_id = ? ORDER BY id", (ticket_id,)).fetchall()
         return [Transition(r["ticket_id"], Stage(r["from_stage"]), Stage(r["to_stage"]), r["cause"],
-                           r["actor"], _dt(r["at"])) for r in rows]
+                           r["actor"], _required_dt(r["at"])) for r in rows]
 
     # ------------------------------------------------------------------ runs
 
@@ -320,7 +320,7 @@ def _ticket(r: sqlite3.Row) -> Ticket:
 def _run(r: sqlite3.Row) -> Run:
     return Run(
         id=r["id"], ticket_id=r["ticket_id"], executor=r["executor"], tier=Tier(r["tier"]), model=r["model"],
-        phase=Phase(r["phase"]), attempt=r["attempt"], started_at=_dt(r["started_at"]),
+        phase=Phase(r["phase"]), attempt=r["attempt"], started_at=_required_dt(r["started_at"]),
         finished_at=_dt(r["finished_at"]), outcome=RunOutcome(r["outcome"]) if r["outcome"] else None,
         usage=Usage(r["input_tokens"], r["output_tokens"], r["cache_read_tokens"], r["reported_cost_usd"]),
         cost_usd=r["cost_usd"], detail=r["detail"], log_path=r["log_path"],
@@ -337,3 +337,7 @@ def _iso(value: datetime | None) -> str | None:
 
 def _dt(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value) if value else None
+
+
+def _required_dt(value: str) -> datetime:
+    return datetime.fromisoformat(value)
