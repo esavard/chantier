@@ -6,3 +6,6 @@ __pycache__/
 .import_linter_cache/
 dist/
 build/
+
+# Injected by the Antigravity agent harness, not part of the project
+skills/system/
