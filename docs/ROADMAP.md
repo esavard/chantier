@@ -17,8 +17,8 @@
 
 ## Known limits
 
-- **CLI output formats drift.** Executor adapters parse Claude Code's `stream-json` and Codex's `--json` events tolerantly; unknown events are ignored and usage stays at zero rather than crashing. Check the token counts in `chantier metrics` after upgrading a CLI.
-- **Headless permissions.** Claude Code and Codex need explicit permission flags in `args` to edit files and run tests without a human. Grant the minimum your checks need.
+- **CLI output formats drift.** Executor adapters parse Claude Code's `stream-json`, Codex's `--json`, and Antigravity's `stream-json` events tolerantly; unknown events are ignored and usage stays at zero rather than crashing. Check the token counts in `chantier metrics` after upgrading a CLI.
+- **Headless permissions.** Claude Code, Codex, and Antigravity need explicit permission flags in `args` to edit files and run tests without a human. Grant the minimum your checks need.
 - **Auto-merge into a local non-bare repo** fails if the base branch is checked out, unless that repo sets `receive.denyCurrentBranch updateInstead`. Remote repos (GitHub, Gitea) have no such issue.
 - **No authentication on the web UI.** It binds to localhost; put it behind a VPN or reverse proxy before exposing it.
 - **Savings are an estimate.** See docs/ARCHITECTURE.md, Metrics.

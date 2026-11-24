@@ -67,7 +67,7 @@ A merge done by a human anywhere (GitHub PR, local `git merge`) is detected by t
 | Port | Adapters today | Next |
 |---|---|---|
 | `StateStore` | `SqliteStore` (WAL, migrations by `PRAGMA user_version`) | — |
-| `Executor` | `ClaudeCodeExecutor`, `CodexExecutor`, `AiderOllamaExecutor`, `CommandExecutor` | other harnesses as they mature (cecli, opencode) |
+| `Executor` | `ClaudeCodeExecutor`, `CodexExecutor`, `AntigravityExecutor`, `AiderOllamaExecutor`, `CommandExecutor` | other harnesses as they mature (cecli, opencode) |
 | `Workspace` | `GitWorkspace` (mirror clone + worktree per ticket) | — |
 | `Notifier` | console, Telegram | email, ntfy |
 | `TrackerMirror` | `NullMirror` | Jira, GitHub Issues (outbound first, intake later) |
@@ -78,4 +78,4 @@ A merge done by a human anywhere (GitHub PR, local `git merge`) is detected by t
 
 Each run records executor, tier, model, tokens (input, output, cache read), duration, outcome and cost: the cost the CLI reported (Claude Code reports one), else tokens times the pricing table for frontier runs; GPU watts times duration times kWh price for local runs.
 
-The savings report values local tokens at a reference frontier model's price, but counts only **successful local runs on tickets that never escalated**. Local runs on tickets that ended on the frontier are reported as waste; failed local retries on tickets that still finished locally are neither. Energy is subtracted. It stays an estimate (a frontier model might use fewer tokens), and the report says so.
+The savings report values local tokens at a reference frontier model's price, but counts only **successful local runs on tickets that never escalated**. Local runs on tickets that ended on the frontier are reported as waste; failed local retries on tickets that still finished locally are neither. Energy is subtracted. It stays an estimate (a frontier model might have needed fewer tokens), and the report says so.

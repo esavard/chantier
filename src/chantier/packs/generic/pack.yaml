@@ -20,8 +20,8 @@ defaults:
 # Documentation for humans and agents: how work enters the factory.
 entry_points:
   greenfield: >
-    Run the blueprint-interview skill (Claude Code, interactive), commit
-    docs/blueprint.md, then `chantier plan <project>`.
+    Run the blueprint-interview skill (Claude Code, Codex, or Google Antigravity,
+    interactive), commit docs/blueprint.md, then `chantier plan <project>`.
   brownfield: >
     Run spec-conventions-interview once if CONVENTIONS.md is missing, then
     spec-interview per feature; commit the spec, then `chantier sync <project>`.

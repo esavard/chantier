@@ -76,12 +76,52 @@ class CodexExecutor(ProcessExecutor):
             usage.cache_read_tokens += cached
             usage.output_tokens += int(u.get("output_tokens", 0))
             return None
+        if event.get("type") in ("error", "turn.failed"):
+            # Without this the reason of a failed run (auth, quota) would vanish from the summary.
+            message = event.get("message") or (event.get("error") or {}).get("message")
+            return f"codex error: {message}" if message else None
         item = event.get("item") or {}
         if event.get("type") == "item.completed":
             if item.get("type") == "agent_message":
                 return item.get("text")
             if item.get("type") == "command_execution":
                 return f"command {item.get('command')}"
+        return None
+
+
+class AntigravityExecutor(ProcessExecutor):
+    """Google Antigravity CLI (`agy -p --output-format stream-json`)."""
+
+    def command(self, request: ExecutionRequest) -> list[str]:
+        cmd = ["agy", "--output-format", "stream-json"]
+        if self.spec.model:
+            cmd += ["--model", self.spec.model]
+        return cmd + list(self.spec.args) + ["-p", request.prompt]
+
+    def interpret(self, line: str, usage: Usage) -> str | None:
+        event = _json(line)
+        if event is None:
+            return line
+        kind = event.get("event")
+        if kind == "step_update":
+            step = event.get("step_update") or {}
+            if step.get("step_type") == "tool" and step.get("state") == "ACTIVE":
+                info = step.get("tool_info") or {}
+                name = step.get("tool_name") or info.get("name")
+                params = info.get("parameters")
+                return f"tool {name} {json.dumps(params, sort_keys=True)[:300]}"
+            return None
+        if kind == "result":
+            res = event.get("result") or {}
+            u = res.get("usage") or {}
+            usage.input_tokens += int(u.get("input_tokens", 0))
+            usage.output_tokens += int(u.get("output_tokens", 0))
+            usage.cache_read_tokens += int(u.get("cache_read_tokens", 0))
+            if res.get("total_cost_usd") is not None:
+                usage.reported_cost_usd = float(res["total_cost_usd"])
+            if res.get("status") == "ERROR" and res.get("error"):
+                return res["error"]
+            return res.get("response") or None
         return None
 
 

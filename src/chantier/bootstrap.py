@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from chantier.adapters.config_yaml import ConfigError, FactoryConfig, PromptLibrary, load_config
-from chantier.adapters.executors.agents import AiderOllamaExecutor, ClaudeCodeExecutor, CodexExecutor
+from chantier.adapters.executors.agents import (
+    AiderOllamaExecutor,
+    AntigravityExecutor,
+    ClaudeCodeExecutor,
+    CodexExecutor,
+)
 from chantier.adapters.executors.command import CommandExecutor
 from chantier.adapters.integrations import (
     ConsoleNotifier,
@@ -25,6 +30,7 @@ from chantier.application.scheduler import Scheduler
 ADAPTERS = {
     "claude_code": ClaudeCodeExecutor,
     "codex": CodexExecutor,
+    "antigravity": AntigravityExecutor,
     "aider_ollama": AiderOllamaExecutor,
     "command": CommandExecutor,
 }

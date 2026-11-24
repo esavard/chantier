@@ -21,11 +21,19 @@ executors:
     # Headless runs cannot answer permission prompts. Allow what the agent needs
     # (edits, your test runner); check `claude --help` for your version's flags.
     args: ["--permission-mode", "acceptEdits", "--allowedTools", "Bash(uv run pytest:*)"]
-  # codex:
-  #   adapter: codex
+  # OpenAI Codex CLI: needs `codex login` (or your own provider config in ~/.codex/config.toml).
+  # To route work to it, add `codex` to a ladder below, e.g. implement/implement: [ollama, claude, codex].
+  codex:
+    adapter: codex
+    tier: frontier
+    model: gpt-5-codex
+    seats: 1
+    args: ["--full-auto"]    # edits in the worktree, sandboxed, no approval prompts
+  # antigravity:
+  #   adapter: antigravity
   #   tier: frontier
-  #   model: gpt-5-codex
-  #   args: ["--full-auto"]
+  #   model: gemini-4-neon-medium   # see `agy models`
+  #   args: ["--mode", "auto"]      # or ["--mode", "accept-edits"] / ["--dangerously-skip-permissions"]
   # my-harness:
   #   adapter: command          # any command; prompt in $CHANTIER_PROMPT_FILE
   #   tier: local

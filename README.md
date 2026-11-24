@@ -21,7 +21,7 @@ flowchart LR
 
     subgraph exec["Executors"]
         LO["local<br/>(Ollama)"]
-        FR["frontier<br/>(Claude Code, Codex)"]
+        FR["frontier<br/>(Claude Code, Codex, Antigravity)"]
     end
 
     subgraph repo["Deliverable repo"]
@@ -54,7 +54,7 @@ flowchart LR
 
 You work in two places:
 
-- **the deliverable repo**: where you run the interview skills (with Claude Code or Codex) and commit specs. chantier never writes there, except branches and merges.
+- **the deliverable repo**: where you run the interview skills (with Claude Code, Codex, or Google Antigravity) and commit specs. chantier never writes there, except branches and merges.
 - **any terminal**: `chantier` commands run from any directory. The factory's config and state live in `~/.chantier`, not in the current folder.
 
 Placeholders:
@@ -76,7 +76,7 @@ chantier init          # writes ~/.chantier/config.yaml: edit executors, routing
 ```bash
 # 1. In the deliverable repo: write a spec by interview, then commit it on the base branch
 cd <path/to/repo>
-claude                 # run the spec-interview skill (once: spec-conventions-interview if CONVENTIONS.md is missing)
+claude                 # or codex / agy: run the spec-interview skill (once: spec-conventions-interview if CONVENTIONS.md is missing)
 git add docs/specs && git commit -m "docs: <spec_NNN_name>"
 
 # 2. From any terminal: register the repo once, then approve the spec
@@ -97,7 +97,7 @@ chantier approve <project>/<spec_NNN_name>    # gate 2: merge (or merge it yours
 ```bash
 # 1. Create the deliverable repo and write the blueprint by interview
 mkdir <path/to/repo> && cd <path/to/repo> && git init -b main
-claude                 # run the blueprint-interview skill: writes docs/blueprint.md
+claude                 # or codex / agy: run the blueprint-interview skill: writes docs/blueprint.md
 git add docs/blueprint.md && git commit -m "docs: blueprint"
 
 # 2. From any terminal: register the repo and ask for a plan

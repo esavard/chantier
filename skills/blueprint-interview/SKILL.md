@@ -23,7 +23,7 @@ The blueprint is the planner's only source of truth. Every node missing from the
 ## Phase 0 - Ground yourself
 
 1. Resolve the project root (`git rev-parse --show-toplevel`). If there is no git repo, ask whether to `git init` one: the factory needs a repo with a base branch.
-2. Read `AGENTS.md` / `CLAUDE.md` and `CONVENTIONS.md` if they exist. If `CONVENTIONS.md` is missing, say so: the user should run `spec-conventions-interview` before or after this skill, since every spec will reference it.
+2. Read `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` and `CONVENTIONS.md` if they exist. If `CONVENTIONS.md` is missing, say so: the user should run `spec-conventions-interview` before or after this skill, since every spec will reference it.
 3. If `docs/blueprint.md` exists, review it section by section instead of starting from a blank page.
 
 ## Phase 1 - Product
@@ -86,7 +86,7 @@ Use this structure. Telegraphic style; every identifier exact.
 Node prefixes: `C_` command, `A_` aggregate, `E_` entity, `DE_` domain event, `P_` policy,
 `R_` repository, `RM_` read model, `DB_` infrastructure, `UI_` UI component/page.
 
-\`\`\`mermaid
+```mermaid
 graph TD
     C_AddTask[Command: AddTask] --> A_Task[Aggregate: Task]
     A_Task -->|Publishes| DE_TaskAdded[Event: TaskAdded]
@@ -94,7 +94,7 @@ graph TD
     P_Persist --> R_TaskRepo[Repository: TaskRepository]
     DE_TaskAdded --> RM_TaskList[Read Model: TaskList]
     RM_TaskList --> UI_TaskPage[UI: TaskPage]
-\`\`\`
+```
 
 ## Invariants
 - <aggregate>: <rule> -> <command that fails, and how>
