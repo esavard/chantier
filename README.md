@@ -111,6 +111,23 @@ chantier approve <project>/plan_001      # gate 2: merge the specs
 # the running factory imports them and builds them in dependency order, exactly like brownfield
 ```
 
+### Benchmark local Ollama models
+
+Before assigning work to a local model, validate which installed Ollama models support structured tool calling, fit in VRAM at your target context window (`--num-ctx`, default `32768`), and pass real specs in isolated git worktrees:
+
+```bash
+# Quick probe only: tool-calling check, VRAM residency, and tok/s across installed models
+chantier bench --probe-only
+
+# Brownfield: evaluate candidate models on sample specs + checks of a registered project
+chantier bench <project> --limit 2 --attempts 2
+
+# Greenfield: evaluate against a micro-spec suite (python, go, ts-svelte; prompts if omitted in a TTY)
+chantier bench --stack python --models qwen3-coder:30b,qwen3.6:35b-a3b-q4_K_M
+```
+
+Outputs a ranked table and a ready-to-paste `executors.ollama` snippet for `config.yaml` (or `--json` for automation). Temporary clones and worktrees are cleaned up automatically without touching the deliverable repo or factory database.
+
 Everyday commands:
 
 | Command | What |
@@ -120,6 +137,7 @@ Everyday commands:
 | `chantier attention` | what needs a human |
 | `chantier show <ticket>` | transitions, runs, feedback |
 | `chantier approve / reject / unblock <ticket>` | gates |
+| `chantier bench [project]` | probe & benchmark local Ollama models |
 | `chantier metrics [project]` | spend, local share, savings |
 | `chantier drain` / `resume` | before / after upgrading the factory |
 

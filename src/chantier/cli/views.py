@@ -7,6 +7,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from chantier.application.bench import BenchReport
 from chantier.application.metrics import MetricsReport
 from chantier.domain.model import AttentionItem, Run, Stage, Ticket, Transition
 
@@ -104,3 +105,52 @@ def metrics(report: MetricsReport) -> Group:
     note = Text("Estimate: a frontier model might have needed fewer tokens than the local one. "
                 "Only successful local runs on tickets that never escalated count as savings.", style="dim")
     return Group(Panel(summary, title="Cost and savings"), per, note)
+
+
+def bench(report: BenchReport) -> Group:
+    table = Table(
+        title=f"Ollama benchmark — {report.mode} ({report.target}, num_ctx={report.num_ctx})",
+        expand=True,
+    )
+    table.add_column("#", no_wrap=True)
+    table.add_column("model", overflow="fold")
+    table.add_column("tools", no_wrap=True)
+    table.add_column("tok/s", no_wrap=True)
+    table.add_column("VRAM")
+    table.add_column("passed", no_wrap=True)
+    table.add_column("attempts", no_wrap=True)
+    table.add_column("time", no_wrap=True)
+    table.add_column("status", overflow="fold")
+    for idx, res in enumerate(report.results, start=1):
+        p = res.probe
+        tools_txt = Text("yes", style="green") if p.tool_calling_ok else Text("no", style="red")
+        tok_txt = f"{p.tok_per_s:.1f}" if p.reachable else "-"
+        if p.total_bytes > 0:
+            vram_gb = p.vram_bytes / 1_000_000_000
+            total_gb = p.total_bytes / 1_000_000_000
+            vram_txt = f"{p.vram_ratio:.0%} ({vram_gb:.1f}/{total_gb:.1f} GB)"
+        elif p.reachable:
+            vram_txt = f"{p.vram_ratio:.0%}"
+        else:
+            vram_txt = "-"
+        passed_txt = "-" if report.mode == "probe" else f"{res.passed_count}/{res.total_specs}"
+        attempts_txt = "-" if report.mode == "probe" else str(res.total_attempts)
+        time_txt = "-" if report.mode == "probe" else f"{res.wall_time_s:.1f}s"
+
+        if res.disqualified_reason:
+            status_txt = Text(f"disqualified: {res.disqualified_reason}", style="red")
+        elif res.model == report.recommended_model:
+            status_txt = Text("recommended", style="bold green")
+        elif report.mode == "probe" or res.passed_count > 0:
+            status_txt = Text("ok", style="cyan")
+        else:
+            reason = next((s.failure_reason for s in res.specs if s.failure_reason), "failed specs")
+            status_txt = Text(f"failed ({reason[:50]})", style="yellow")
+
+        table.add_row(str(idx), res.model, tools_txt, tok_txt, vram_txt, passed_txt, attempts_txt, time_txt, status_txt)
+
+    if report.config_snippet:
+        footer = Panel(report.config_snippet, title="Recommended config.yaml snippet", style="green")
+    else:
+        footer = Text("No candidate model passed all benchmark criteria.", style="yellow")
+    return Group(table, footer)

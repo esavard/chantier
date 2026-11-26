@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import threading
 import time
@@ -13,10 +14,11 @@ from rich.live import Live
 
 from chantier.adapters.config_yaml import ConfigError, factory_home, write_project
 from chantier.adapters.workspace_git import GitError
+from chantier.application.bench import DEFAULT_NUM_CTX, GREENFIELD_STACKS, BenchConfig, BenchError
 from chantier.application.board import BoardError
 from chantier.application.metrics import build_report
 from chantier.application.scheduler import DRAIN_FLAG
-from chantier.bootstrap import App, build
+from chantier.bootstrap import App, build, build_benchmarker
 from chantier.cli import views
 
 console = Console()
@@ -28,7 +30,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         return args.func(args) or 0
-    except (BoardError, ConfigError, GitError) as exc:
+    except (BoardError, BenchError, ConfigError, GitError) as exc:
         console.print(f"[red]error:[/] {exc}")
         return 1
     except KeyboardInterrupt:
@@ -81,6 +83,19 @@ def _parser() -> argparse.ArgumentParser:
     cmd("resume", cmd_resume, "leave drain mode")
     sp = cmd("metrics", cmd_metrics, "costs and savings")
     sp.add_argument("project", nargs="?")
+    sp = cmd("bench", cmd_bench, "benchmark local Ollama models for tool calling, speed, and spec completion")
+    sp.add_argument("project", nargs="?", help="registered project name (brownfield mode)")
+    sp.add_argument("--models", default="", help="comma-separated Ollama models (default: all installed)")
+    sp.add_argument("--specs", default="", help="comma-separated brownfield spec stems or paths")
+    sp.add_argument("--stack", choices=GREENFIELD_STACKS, help="greenfield stack micro-spec suite")
+    sp.add_argument("--num-ctx", type=int, default=DEFAULT_NUM_CTX, help=f"context window (default: {DEFAULT_NUM_CTX})")
+    sp.add_argument("--attempts", type=int, default=2, help="max attempts per spec (default: 2)")
+    sp.add_argument("--limit", type=int, default=2, help="max brownfield specs to sample (default: 2)")
+    sp.add_argument("--probe-only", action="store_true", help="only run /api/tags, /api/ps VRAM, and tool probe")
+    sp.add_argument("--review", action="store_true", help="also run configured frontier review after local checks")
+    sp.add_argument("--min-tok-s", type=float, default=10.0, help="minimum throughput in tok/s (default: 10.0)")
+    sp.add_argument("--min-vram-ratio", type=float, default=0.9, help="minimum GPU VRAM ratio 0..1 (default: 0.9)")
+    sp.add_argument("--json", action="store_true", help="emit JSON report")
     sp = cmd("serve", cmd_serve, "web UI and HTTP API")
     sp.add_argument("--host", default="127.0.0.1")
     sp.add_argument("--port", type=int, default=8765)
@@ -206,6 +221,49 @@ def cmd_metrics(args) -> int:
     report = build_report(app.store, app.config.reference_model, app.config.prices, args.project)
     console.print(views.metrics(report))
     return 0
+
+
+def cmd_bench(args) -> int:
+    bench = build_benchmarker()
+    stack = args.stack
+    if not args.probe_only and not stack and bench.needs_greenfield_stack(args.project):
+        if args.json or not sys.stdin.isatty():
+            stacks = "|".join(GREENFIELD_STACKS)
+            raise BenchError(f"greenfield benchmark requires --stack ({stacks}) in non-interactive mode")
+        stack = _prompt_greenfield_stack()
+
+    models = tuple(m.strip() for m in args.models.split(",") if m.strip())
+    specs = tuple(s.strip() for s in args.specs.split(",") if s.strip())
+    report = bench.run(
+        BenchConfig(
+            project=args.project,
+            models=models,
+            specs=specs,
+            stack=stack,
+            num_ctx=args.num_ctx,
+            attempts=args.attempts,
+            limit=args.limit,
+            probe_only=args.probe_only,
+            review=args.review,
+            min_tok_s=args.min_tok_s,
+            min_vram_ratio=args.min_vram_ratio,
+        )
+    )
+    if args.json:
+        sys.stdout.write(json.dumps(report.to_dict(), indent=2) + "\n")
+    else:
+        console.print(views.bench(report))
+    return 0
+
+
+def _prompt_greenfield_stack() -> str:
+    choices = "/".join(GREENFIELD_STACKS)
+    console.print("No brownfield specs found; select a greenfield stack to benchmark against a representative example.")
+    raw = input(f"Target stack ({choices}) [python]: ").strip().lower()
+    choice = raw or "python"
+    if choice not in GREENFIELD_STACKS:
+        raise BenchError(f"unknown stack '{choice}' (choose from: {', '.join(GREENFIELD_STACKS)})")
+    return choice
 
 
 # ---------------------------------------------------------------------- running

@@ -80,6 +80,26 @@ class ExecutionResult:
     killed_reason: str | None = None  # set when the watchdog stopped the process
 
 
+@dataclass
+class ModelProbeResult:
+    model: str
+    reachable: bool
+    tool_calling_ok: bool
+    tok_per_s: float = 0.0
+    vram_bytes: int = 0
+    total_bytes: int = 0
+    vram_ratio: float = 0.0
+    error: str | None = None
+
+
+class ModelProbe(Protocol):
+    """Catalog discovery and readiness probing for local model servers."""
+
+    def list_models(self) -> list[str]: ...
+
+    def probe(self, model: str, *, num_ctx: int = 32768) -> ModelProbeResult: ...
+
+
 class LineObserver(Protocol):
     """Fed every output line of a running executor. Returns a reason to kill, or None."""
 

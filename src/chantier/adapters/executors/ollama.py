@@ -16,7 +16,7 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 
 from chantier.adapters.executors.process import kill_process
-from chantier.application.ports import ExecutionRequest, ExecutionResult, LineObserver
+from chantier.application.ports import ExecutionRequest, ExecutionResult, LineObserver, ModelProbeResult
 from chantier.domain.model import Phase, TicketKind, Usage
 from chantier.domain.routing import ExecutorSpec
 from chantier.specs import normalized_spec_hash, parse_spec
@@ -169,15 +169,21 @@ def normalize_model_name(model: str) -> str:
     return model.removeprefix("ollama_chat/").removeprefix("ollama/")
 
 
-def ensure_model_loaded(base_url: str, model: str) -> None:
+def ensure_model_loaded(base_url: str, model: str, *, num_ctx: int | None = None) -> None:
     """Load `model` into VRAM, unloading other resident models first (single-GPU setups)."""
     name = normalize_model_name(model)
     loaded = _get_json(f"{base_url}/api/ps").get("models", [])
-    if any(m.get("name") == name for m in loaded):
+    if any(
+        m.get("name") == name and (num_ctx is None or m.get("context_length") == num_ctx)
+        for m in loaded
+    ):
         return
     for resident in loaded:
         _post_json(f"{base_url}/api/generate", {"model": resident["name"], "keep_alive": 0, "prompt": ""})
-    _post_json(f"{base_url}/api/generate", {"model": name, "keep_alive": -1, "prompt": ""})
+    payload: dict[str, Any] = {"model": name, "keep_alive": -1, "prompt": ""}
+    if num_ctx is not None:
+        payload["options"] = {"num_ctx": num_ctx}
+    _post_json(f"{base_url}/api/generate", payload)
 
 
 class OllamaExecutor:
@@ -784,11 +790,121 @@ def _get_json(url: str) -> dict[str, Any]:
 
 
 def _post_json(url: str, payload: dict[str, Any]) -> None:
+    _post_json_response(url, payload)
+
+
+def _post_json_response(url: str, payload: dict[str, Any], timeout_s: int = 300) -> dict[str, Any]:
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=300) as resp:
-        resp.read()
+    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+        raw = resp.read()
+        return json.loads(raw) if raw else {}
+
+
+class OllamaModelProbe:
+    """Discovers local Ollama models and probes tool calling, VRAM residency, and throughput."""
+
+    def __init__(self, base_url: str | None = None) -> None:
+        self._base_url = base_url
+
+    @property
+    def ollama_url(self) -> str:
+        return (self._base_url or ollama_base_url()).rstrip("/")
+
+    def list_models(self) -> list[str]:
+        try:
+            data = _get_json(f"{self.ollama_url}/api/tags")
+        except HTTPError as exc:
+            raise RuntimeError(f"ollama /api/tags HTTP {exc.code}: {_read_http_error(exc)}") from exc
+        except (URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"ollama unreachable at {self.ollama_url}: {exc}") from exc
+        models: list[str] = []
+        for entry in data.get("models") or ():
+            name = str(entry.get("name") or entry.get("model") or "").strip()
+            if name and name not in models:
+                models.append(name)
+        return models
+
+    def probe(self, model: str, *, num_ctx: int = DEFAULT_NUM_CTX) -> ModelProbeResult:
+        name = normalize_model_name(model)
+        if not name:
+            return ModelProbeResult(model=model, reachable=False, tool_calling_ok=False, error="empty model name")
+        try:
+            ensure_model_loaded(self.ollama_url, name, num_ctx=num_ctx)
+            payload = {
+                "model": name,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": (
+                            "Call the `write_file` tool now to write `probe.txt` with content `ok`. "
+                            "Do not reply with prose; only emit the tool call."
+                        ),
+                    }
+                ],
+                "tools": _TOOLS,
+                "stream": False,
+                "keep_alive": -1,
+                "options": {"num_ctx": num_ctx, "temperature": 0.0},
+            }
+            resp = _post_json_response(f"{self.ollama_url}/api/chat", payload)
+            ps = _get_json(f"{self.ollama_url}/api/ps")
+        except HTTPError as exc:
+            return ModelProbeResult(
+                model=name,
+                reachable=False,
+                tool_calling_ok=False,
+                error=f"HTTP {exc.code}: {_read_http_error(exc)}",
+            )
+        except (URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError) as exc:
+            return ModelProbeResult(
+                model=name,
+                reachable=False,
+                tool_calling_ok=False,
+                error=f"ollama error: {exc}",
+            )
+
+        vram_bytes, total_bytes, vram_ratio = _probe_vram(ps, name)
+        return ModelProbeResult(
+            model=name,
+            reachable=True,
+            tool_calling_ok=_probe_has_write_file(resp),
+            tok_per_s=_probe_tok_per_s(resp),
+            vram_bytes=vram_bytes,
+            total_bytes=total_bytes,
+            vram_ratio=vram_ratio,
+        )
+
+
+def _probe_has_write_file(resp: dict[str, Any]) -> bool:
+    msg = resp.get("message") or {}
+    for call in msg.get("tool_calls") or ():
+        fn = call.get("function") or {}
+        if fn.get("name") == "write_file":
+            args, err = _decode_arguments(fn.get("arguments"))
+            if err is None and _str_arg(args, "path").strip() and "content" in args:
+                return True
+    return False
+
+
+def _probe_tok_per_s(resp: dict[str, Any]) -> float:
+    eval_count = int(resp.get("eval_count") or 0)
+    eval_ns = int(resp.get("eval_duration") or 0)
+    if eval_count > 0 and eval_ns > 0:
+        return round(eval_count * 1_000_000_000 / eval_ns, 2)
+    return 0.0
+
+
+def _probe_vram(ps: dict[str, Any], name: str) -> tuple[int, int, float]:
+    for entry in ps.get("models") or ():
+        entry_name = normalize_model_name(str(entry.get("name") or entry.get("model") or ""))
+        if entry_name == name or entry_name == f"{name}:latest":
+            total = int(entry.get("size") or 0)
+            vram = int(entry.get("size_vram") or 0)
+            ratio = (vram / total) if total > 0 else 0.0
+            return vram, total, ratio
+    return 0, 0, 0.0

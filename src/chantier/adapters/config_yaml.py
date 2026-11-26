@@ -161,7 +161,9 @@ class PromptLibrary:
         raise ConfigError(f"prompt template '{name}' not found")
 
     def __call__(self, ticket: Ticket, phase: Phase, worktree: Path) -> str:
-        settings = self.config.projects[ticket.project]
+        return self.render(ticket, self.config.projects[ticket.project], phase)
+
+    def render(self, ticket: Ticket, settings: ProjectSettings, phase: Phase) -> str:
         feedback = ""
         if ticket.feedback and phase != Phase.REVIEW:
             feedback = (f"\nThis is attempt {ticket.attempt + 1}. Fix what the factory reported on the "

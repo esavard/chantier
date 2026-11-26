@@ -5,14 +5,17 @@ import socket
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from collections.abc import Sequence
 from pathlib import Path
+
+import pytest
 
 from chantier.adapters.executors.agents import (
     AntigravityExecutor,
     ClaudeCodeExecutor,
     CodexExecutor,
 )
-from chantier.adapters.executors.ollama import OllamaExecutor
+from chantier.adapters.executors.ollama import OllamaExecutor, OllamaModelProbe
 from chantier.adapters.executors.process import run_process
 from chantier.application.ports import ExecutionRequest
 from chantier.application.supervisor import LoopDetector
@@ -164,9 +167,15 @@ def test_ollama_host_comes_from_the_environment(monkeypatch):
 
 
 class _FakeOllamaServer:
-    def __init__(self, chat_turns: list[list[dict]], loaded_models: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        chat_turns: list[list[dict]],
+        loaded_models: Sequence[str | dict] | None = None,
+        tags: list[str] | None = None,
+    ) -> None:
         self.chat_turns = list(chat_turns)
         self.loaded_models = list(loaded_models or [])
+        self.tags = list(tags or [])
         self.generate_calls: list[dict] = []
         self.chat_requests: list[dict] = []
         outer = self
@@ -177,7 +186,17 @@ class _FakeOllamaServer:
 
             def do_GET(self) -> None:
                 if self.path == "/api/ps":
-                    body = json.dumps({"models": [{"name": m} for m in outer.loaded_models]}).encode()
+                    models = [
+                        {"name": m} if isinstance(m, str) else m
+                        for m in outer.loaded_models
+                    ]
+                    body = json.dumps({"models": models}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(body)
+                elif self.path == "/api/tags":
+                    body = json.dumps({"models": [{"name": m} for m in outer.tags]}).encode()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
@@ -199,6 +218,12 @@ class _FakeOllamaServer:
                 if self.path == "/api/chat":
                     outer.chat_requests.append(payload)
                     chunks = outer.chat_turns.pop(0)
+                    if payload.get("stream", True) is False:
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(json.dumps(chunks[-1]).encode())
+                        return
                     self.send_response(200)
                     self.send_header("Content-Type", "application/x-ndjson")
                     self.end_headers()
@@ -691,3 +716,78 @@ def test_ollama_executor_compacts_old_write_edit_tool_call_args(tmp_path: Path, 
     compacted_args = first_assistant["tool_calls"][0]["function"]["arguments"]
     assert compacted_args["path"] == "big.go"
     assert "omitted" in compacted_args["content"].lower()
+
+
+def test_ollama_model_probe_catalog_vram_tok_s_and_tool_calling(monkeypatch):
+    turns = [
+        [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "",
+                    "tool_calls": [
+                        {
+                            "id": "p1",
+                            "function": {
+                                "name": "write_file",
+                                "arguments": {"path": "probe.txt", "content": "ok"},
+                            },
+                        }
+                    ],
+                },
+                "done": True,
+                "eval_count": 100,
+                "eval_duration": 2_000_000_000,
+            }
+        ],
+        [
+            {
+                "message": {"role": "assistant", "content": "I will write probe.txt manually."},
+                "done": True,
+                "eval_count": 50,
+                "eval_duration": 1_000_000_000,
+            }
+        ],
+    ]
+    loaded = [
+        {"name": "qwen3-coder:30b", "size": 20_000_000_000, "size_vram": 18_000_000_000},
+        {"name": "plain:7b", "size": 8_000_000_000, "size_vram": 4_000_000_000},
+    ]
+    with _FakeOllamaServer(turns, loaded_models=loaded, tags=["qwen3-coder:30b", "plain:7b"]) as server:
+        monkeypatch.setenv("OLLAMA_API_BASE", server.url)
+        probe = OllamaModelProbe()
+        assert probe.list_models() == ["qwen3-coder:30b", "plain:7b"]
+
+        r1 = probe.probe("qwen3-coder:30b", num_ctx=32768)
+        assert r1.reachable is True
+        assert r1.tool_calling_ok is True
+        assert r1.tok_per_s == pytest.approx(50.0)
+        assert r1.vram_bytes == 18_000_000_000
+        assert r1.total_bytes == 20_000_000_000
+        assert r1.vram_ratio == pytest.approx(0.9)
+        assert server.chat_requests[0]["stream"] is False
+        assert server.chat_requests[0]["options"]["num_ctx"] == 32768
+        assert any(
+            c["model"] == "qwen3-coder:30b" and c.get("options", {}).get("num_ctx") == 32768
+            for c in server.generate_calls
+        )
+
+        r2 = probe.probe("plain:7b", num_ctx=16384)
+        assert r2.reachable is True
+        assert r2.tool_calling_ok is False
+        assert r2.vram_ratio == pytest.approx(0.5)
+
+
+def test_ollama_model_probe_handles_unreachable_server(monkeypatch):
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    monkeypatch.setenv("OLLAMA_API_BASE", f"http://127.0.0.1:{port}")
+    probe = OllamaModelProbe()
+    with pytest.raises(RuntimeError, match="unreachable"):
+        probe.list_models()
+    res = probe.probe("missing:7b")
+    assert res.reachable is False
+    assert res.tool_calling_ok is False
+    assert res.error
