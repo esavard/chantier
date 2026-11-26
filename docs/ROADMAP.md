@@ -9,6 +9,7 @@
 ## Next features
 
 - **Frontier diagnosis on a supervisor signal**: when the watchdog kills a local run, optionally ask a frontier agent to read the log and choose between retry with a hint, escalate, or block. Today the ladder decides alone.
+- **Automatic local model benchmark (`chantier bench`)**: probe installed Ollama models against a target repo (greenfield stack template or brownfield sample specs/checks) for tool-calling compliance, tok/s under VRAM limits, and review pass rate to rank and select the best local model for `config.yaml`.
 - **`Depends on` in `spec-interview`** (agent-skills), and a `Relevant modules/paths` reminder: both drive scheduling and scope checks.
 - **Move `blueprint-interview` to agent-skills** once it has run on a real project.
 - **App factory pack** (private, `$CHANTIER_HOME/packs/`): `checks: ["./factory verify <slug>"]`, prompts that hand off to `app-builder`, `app-brief-interview` as the greenfield entry.
