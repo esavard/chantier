@@ -55,11 +55,13 @@ pricing:
   reference_model: sonnet
   models:
     sonnet: {input: 3.0, output: 15.0, cache_read: 0.30}
+    gpt-5-codex: {input: 1.25, output: 10.0, cache_read: 0.125}
+    gemini-4-neon-medium: {input: 3.0, output: 15.0, cache_read: 0.15}
 
 # Local runs are not free: GPU power x run time x electricity price.
 energy:
   gpu_watts: 180
-  kwh_price: 0.08
+  kwh_price: 0.15                    # USD/kWh (~$0.15 OECD/US avg; adjust to local utility rate)
 
 # Telegram: only attention items (a gate waiting, an escalation exhausted, a
 # budget reached). Secrets come from the environment, never from this file.
