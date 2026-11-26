@@ -221,6 +221,7 @@ class Scheduler:
         self._deliver(self._fresh(ticket), worktree)
 
     def _execute(self, ticket: Ticket, phase: Phase, executor: Executor, worktree: Path) -> tuple[ExecutionResult, Run]:
+        settings = self.board.settings(ticket.project)
         stem = ticket.id.split("/")[-1]
         name = f"{stem}-{phase.value}-{ticket.attempt + 1}-{executor.spec.name}.log"
         log_path = self.logs_dir / ticket.project / name
@@ -233,6 +234,7 @@ class Scheduler:
         request = ExecutionRequest(
             ticket=ticket, phase=phase, workdir=worktree,
             prompt=self.prompts(ticket, phase, worktree), log_path=log_path,
+            checks=settings.checks if phase == Phase.IMPLEMENT else (),
         )
         observer = LoopDetector() if executor.spec.tier == Tier.LOCAL else (lambda line: None)
         result = executor.execute(request, observer)

@@ -8,12 +8,12 @@ from pathlib import Path
 
 from chantier.adapters.config_yaml import ConfigError, FactoryConfig, PromptLibrary, load_config
 from chantier.adapters.executors.agents import (
-    AiderOllamaExecutor,
     AntigravityExecutor,
     ClaudeCodeExecutor,
     CodexExecutor,
 )
 from chantier.adapters.executors.command import CommandExecutor
+from chantier.adapters.executors.ollama import OllamaExecutor
 from chantier.adapters.integrations import (
     ConsoleNotifier,
     JsonlEventSink,
@@ -31,7 +31,7 @@ ADAPTERS = {
     "claude_code": ClaudeCodeExecutor,
     "codex": CodexExecutor,
     "antigravity": AntigravityExecutor,
-    "aider_ollama": AiderOllamaExecutor,
+    "ollama": OllamaExecutor,
     "command": CommandExecutor,
 }
 

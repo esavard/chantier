@@ -1,17 +1,17 @@
 # chantier factory configuration ($CHANTIER_HOME/config.yaml, default ~/.chantier)
 #
-# Executors are agent CLIs. `tier` decides the accounting: local runs cost
-# energy, frontier runs cost money. `seats` caps concurrent runs (one 16 GB
-# GPU holds one model: keep local seats at 1). Executor names are free labels
-# used by the routing ladders below.
+# Executors are agent CLIs or native adapters. `tier` decides the accounting:
+# local runs cost energy, frontier runs cost money. `seats` caps concurrent
+# runs (one 16 GB GPU holds one model: keep local seats at 1). Executor names
+# are free labels used by the routing ladders below.
 executors:
   ollama:
-    adapter: aider_ollama
+    adapter: ollama
     tier: local
-    model: ollama_chat/qwen3-coder:30b   # Ollama host: $OLLAMA_API_BASE (default http://localhost:11434)
+    model: qwen3-coder:30b             # Ollama host: $OLLAMA_API_BASE (default http://localhost:11434)
     seats: 1
-    args: ["--edit-format", "whole"]
-    idle_timeout_s: 600     # no output for 10 min -> killed
+    args: ["--num-ctx", "32768"]
+    idle_timeout_s: 600                # no output for 10 min -> killed
     timeout_s: 3600
   claude:
     adapter: claude_code

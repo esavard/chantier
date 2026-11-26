@@ -16,7 +16,7 @@ from chantier.domain.model import Phase, Ticket, TicketKind, Tier
 @dataclass(frozen=True)
 class ExecutorSpec:
     name: str
-    adapter: str                     # "claude_code" | "codex" | "antigravity" | "aider_ollama" | "command" | "fake"
+    adapter: str                     # "claude_code" | "codex" | "antigravity" | "ollama" | "command"
     tier: Tier
     model: str = ""
     seats: int = 1                   # concurrent runs allowed (local GPU: usually 1)

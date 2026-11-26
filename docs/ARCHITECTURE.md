@@ -67,7 +67,7 @@ A merge done by a human anywhere (GitHub PR, local `git merge`) is detected by t
 | Port | Adapters today | Next |
 |---|---|---|
 | `StateStore` | `SqliteStore` (WAL, migrations by `PRAGMA user_version`) | — |
-| `Executor` | `ClaudeCodeExecutor`, `CodexExecutor`, `AntigravityExecutor`, `AiderOllamaExecutor`, `CommandExecutor` | other harnesses as they mature (cecli, opencode) |
+| `Executor` | `ClaudeCodeExecutor`, `CodexExecutor`, `AntigravityExecutor`, `OllamaExecutor`, `CommandExecutor` | other harnesses as they mature (cecli, opencode) |
 | `Workspace` | `GitWorkspace` (mirror clone + worktree per ticket) | — |
 | `Notifier` | console, Telegram | email, ntfy |
 | `TrackerMirror` | `NullMirror` | Jira, GitHub Issues (outbound first, intake later) |

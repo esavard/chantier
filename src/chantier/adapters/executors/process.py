@@ -114,7 +114,7 @@ def run_process(
                 killed = f"run exceeded {timeout_s} s"
             if killed:
                 log.write(f"\n[chantier] killed: {killed}\n")
-                _kill(proc)
+                kill_process(proc)
                 break
     exit_code = proc.wait()
     return ExecutionResult(
@@ -125,7 +125,7 @@ def run_process(
     )
 
 
-def _kill(proc: subprocess.Popen) -> None:
+def kill_process(proc: subprocess.Popen) -> None:
     try:
         os.killpg(proc.pid, signal.SIGTERM)
         proc.wait(timeout=10)

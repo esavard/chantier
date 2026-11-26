@@ -69,6 +69,7 @@ class ExecutionRequest:
     workdir: Path
     prompt: str
     log_path: Path
+    checks: tuple[str, ...] = ()
 
 
 @dataclass

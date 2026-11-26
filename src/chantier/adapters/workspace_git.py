@@ -20,8 +20,8 @@ from pathlib import Path
 
 from chantier.domain.model import Ticket
 
-# Agent tool artifacts that must never reach a deliverable (aider litters these).
-EXCLUDES = (".aider*", ".chantier-prompt.md")
+# Agent tool artifacts that must never reach a deliverable.
+EXCLUDES = (".chantier-prompt.md",)
 IDENTITY = ("-c", "user.name=chantier", "-c", "user.email=chantier@localhost")
 
 

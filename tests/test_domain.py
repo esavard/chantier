@@ -126,6 +126,18 @@ def test_loop_detector_fires_on_repeated_output_only():
     assert all(fresh(f"different line {chr(65 + i)} here") is None for i in range(20))
 
 
+def test_loop_detector_preserves_numbers_in_tool_and_command_lines():
+    detector = LoopDetector(window=60, threshold=8)
+    for line_no in range(37, 49):
+        assert detector(f"command bash -lc \"sed -i '{line_no}s/\\[ \\]/[x]/' docs/specs/spec.md\"") is None
+    for i in range(12):
+        line = f'tool read_file {{"end_line": {(i + 1) * 100}, "path": "a.go", "start_line": {i * 100 + 1}}}'
+        assert detector(line) is None
+    for _ in range(7):
+        assert detector('tool run_command {"command": "go test ./..."}') is None
+    assert detector('tool run_command {"command": "go test ./..."}') is not None
+
+
 def test_scope_violations():
     changed = ["lib/history/model.dart", "lib/app.dart", "test/history_test.dart", "pubspec.yaml"]
     assert scope_violations(changed, ("lib/history/", "lib/app.dart"), ("test/",)) == ["pubspec.yaml"]

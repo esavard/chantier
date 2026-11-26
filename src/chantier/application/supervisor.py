@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from fnmatch import fnmatch
 
 _NOISE = re.compile(r"\d+(\.\d+)?|0x[0-9a-f]+|\s+", re.IGNORECASE)
+_WHITESPACE = re.compile(r"\s+")
 
 
 @dataclass
@@ -37,7 +38,12 @@ class LoopDetector:
         self._counts: Counter[str] = Counter()
 
     def __call__(self, line: str) -> str | None:
-        key = _NOISE.sub(" ", line.strip().lower()).strip()
+        stripped = line.strip().lower()
+        if stripped.startswith(("tool ", "command ")):
+            # Structured invocations carry meaningful line numbers, offsets, and arguments.
+            key = _WHITESPACE.sub(" ", stripped)
+        else:
+            key = _NOISE.sub(" ", stripped).strip()
         if len(key) < self.min_length:
             return None
         if len(self._recent) == self._recent.maxlen:
